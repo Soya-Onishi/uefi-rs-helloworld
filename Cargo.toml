@@ -8,6 +8,10 @@ edition = "2021"
 name = "helloworld"
 path = "src/helloworld/main.rs"
 
+[[bin]]
+name = "image_path"
+path = "src/image_path/main.rs"
+
 [dependencies]
 log = "0.4"
 uefi = "0.17"
