@@ -12,6 +12,10 @@ path = "src/helloworld/main.rs"
 name = "image_path"
 path = "src/image_path/main.rs"
 
+[[bin]]
+name = "memory_map"
+path = "src/memory_map/main.rs"
+
 [dependencies]
 log = "0.4"
 uefi = "0.17"
