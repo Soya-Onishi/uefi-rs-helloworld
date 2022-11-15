@@ -67,3 +67,63 @@ System PartitionはUEFIにおけるbootable partitionのこと。(MBRにおけ�
 System PartitionはファイルシステムとしてFATを含んでおり、
 `/EFI/BOOT`以下のパスにアーキテクチャに合わせたファイル名の実行体を自動的に実行する。
 
+## Handleについて
+
+Handleとはプログラム上でハードウェアや実行中のバイナリなどの資源を表す。
+このHandleはOpaque pointerであるため、利用するにはプロトコルを利用する必要がある。
+
+### Opaque pointerとは
+
+[Opaque Pointerについて参考ページ](https://minus9d.hatenablog.com/entry/2016/01/13/213751)
+
+ざっくりとした理解だと、実体を直接扱わないポインタ。
+構造体などでは実装をユーザから隠蔽することができる利点がある。
+
+例えば、以下はOpaque PointerをC言語の関数に利用している例になる（はず）
+
+```
+void foo(struct obj* opaque) {
+    ...
+}
+```
+
+## Protocolについて
+
+Protocolとは計算機上の各種資源とやりとりするためのインタフェースである。
+例えば、`LoadedImage`や`BlockIO`などのプロトコルが存在する。
+
+ProtocolはBoot Serviceステージの間で利用可能であり、
+Runtimeステージでは利用できない。
+
+### ステージとは
+
+UEFIにおけるOSが起動するまでのいくつかの段階のことを指す。
+以下の３つのステージが定義されている。
+
+- Platform Initialization
+- Boot Services
+- Runtime
+
+#### Platform Initialization
+
+`uefi-rs`を利用して記述するプログラムよりも前に動くステージ。
+UEFI Platform Initialization Specificationという仕様で記載されている。
+
+#### Boot Services
+
+主に`uefi-rs`を利用して作成するプログラムが動くステージ。
+Protocolはこのステージで利用可能である。
+また、このステージでOSカーネルのロードを行うなど次ステージへの準備も行われる。
+
+`BootServices`と`RuntimeServices`の両方のが利用可能である。
+
+`uefi-rs`では`SystemTable::exit_boot_services`を呼び出すことで次のステージであるRuntimenに遷移する。
+
+#### Runtime
+
+いわゆるOSが起動して動作しているステージ。
+
+UEFIの機能は制限されており、`BootServices`が使えなくなっている。`RuntimeServices`は使える。
+
+このステージに入ると計算機を一旦リセットしない限り再度Boot Servicesステージに行くことはできない。
+
