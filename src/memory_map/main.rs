@@ -36,19 +36,11 @@ fn print_memory_map(boot_services: &BootServices) -> Result {
     // 確保したバッファにメモリマップを格納する
     let memmap_buf = boot_services.allocate_pool(MemoryType::BOOT_SERVICES_DATA, buffer_size)?;
     let memmap_buf = unsafe { core::slice::from_raw_parts_mut(memmap_buf, buffer_size) };
-    let (key, _) = boot_services.memory_map(memmap_buf)?;
+    let (_, iter) = boot_services.memory_map(memmap_buf)?;
 
-    for entry in 0..2 {
-        let start = entry * memmap_size.entry_size;
-        let end = start + memmap_size.entry_size;
-        for idx in start..end {
-            print!(" {:#04x}", memmap_buf[idx]);
-            if idx % 8 == 7 {
-                println!("");
-            }
-        }
-
-        println!("");
+    for entry in iter {
+        println!("Phys: {:#010x}, Virt: {:#010x}, Page: {:#5}, Type: {:?}", entry.phys_start, entry.virt_start, entry.page_count, entry.ty);
     }
+
     Ok(())
 }
