@@ -2,27 +2,35 @@
 #![no_main]
 #![feature(abi_efiapi)]
 
+extern crate alloc;
+
 use log::info;
 use uefi::proto::console::text::Output;
 use uefi::{prelude::*, alloc::exit_boot_services, table::boot::MemoryMapKey};
-use uefi::table::boot::MemoryType;
+use uefi::table::boot::{MemoryType, MemoryDescriptor};
 use uefi::table::SystemTable;
 use uefi::Result;
 use uefi_services::{print, println};
+use alloc::vec::Vec;
+use alloc::vec;
 
 #[entry]
 fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     uefi_services::init(&mut system_table).unwrap();
     let boot_services = system_table.boot_services();
+    unsafe { uefi::alloc::init(boot_services); }
 
-    print_memory_map(&boot_services).unwrap();
+    let memmap = print_memory_map(&boot_services).unwrap();
+    for entry in memmap.iter() {
+        println!("Phys: {:#010x}", entry.phys_start);
+    }
 
     boot_services.stall(20_000_000);
 
     Status::SUCCESS
 }
 
-fn print_memory_map(boot_services: &BootServices) -> Result {
+fn print_memory_map(boot_services: &BootServices) -> Result<Vec<MemoryDescriptor>> {
     let memmap_size = boot_services.memory_map_size();
     let entry_nums = (memmap_size.map_size + memmap_size.entry_size - 1) / memmap_size.entry_size;
 
@@ -34,13 +42,11 @@ fn print_memory_map(boot_services: &BootServices) -> Result {
 
     // メモリマップを格納するためのバッファを確保する
     // 確保したバッファにメモリマップを格納する
-    let memmap_buf = boot_services.allocate_pool(MemoryType::BOOT_SERVICES_DATA, buffer_size)?;
-    let memmap_buf = unsafe { core::slice::from_raw_parts_mut(memmap_buf, buffer_size) };
-    let (_, iter) = boot_services.memory_map(memmap_buf)?;
+    // uefi::allocクレートを利用することで
+    // UEFIのAllocatePoolなどを直接利用する必要がなくなっている
+    let mut memmap_buf: Vec<u8> = vec![0; buffer_size];
+    let (_, iter) = boot_services.memory_map(memmap_buf.as_mut_slice())?;
+    let memmap: Vec<MemoryDescriptor> = iter.copied().collect();
 
-    for entry in iter {
-        println!("Phys: {:#010x}, Virt: {:#010x}, Page: {:#5}, Type: {:?}", entry.phys_start, entry.virt_start, entry.page_count, entry.ty);
-    }
-
-    Ok(())
+    Ok(memmap)
 }
